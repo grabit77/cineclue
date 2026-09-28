@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-cinema-bg text-slate-200 font-body antialiased;
+  background-image:
+    radial-gradient(1100px 500px at 15% -10%, rgba(229, 9, 20, 0.16), transparent 60%),
+    radial-gradient(900px 420px at 95% 0%, rgba(245, 197, 24, 0.08), transparent 60%),
+    radial-gradient(800px 600px at 50% 110%, rgba(30, 41, 59, 0.5), transparent 65%);
+  background-attachment: fixed;
+}
+
+/* Strip lights cinematografiche */
+.cinema-strip {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0 18px,
+    transparent 18px 30px
+  );
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3147;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4462;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

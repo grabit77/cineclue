@@ -1,0 +1,15 @@
+
+> cineclue@1.0.0 dev
+> next dev -p 3002
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3002
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2s
+ ✓ Compiled /api/score in 477ms (123 modules)
+ POST /api/score 401 in 1107ms
+ ✓ Compiled /api/leaderboard in 81ms (125 modules)
+ GET /api/leaderboard 200 in 151ms
+[?25h

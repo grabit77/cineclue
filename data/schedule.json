@@ -1,0 +1,23 @@
+{
+  "resetAt": "2026-09-25T14:00:29.267Z",
+  "overrides": {
+    "2026-10-03": {
+      "id": 348,
+      "title": "Alien",
+      "year": 1979,
+      "posterPath": "/2lFDSdjBhJBQ2TDkfOel2O2V3dF.jpg"
+    },
+    "2026-10-02": {
+      "id": 578,
+      "title": "Lo squalo",
+      "year": 1975,
+      "posterPath": "/zHO7LcDKgAM1sLAZ1Y9yuWc7W7B.jpg"
+    },
+    "2026-09-28": {
+      "id": 348,
+      "title": "Alien",
+      "year": 1979,
+      "posterPath": "/2lFDSdjBhJBQ2TDkfOel2O2V3dF.jpg"
+    }
+  }
+}
