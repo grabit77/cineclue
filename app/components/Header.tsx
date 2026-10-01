@@ -6,6 +6,7 @@ import { LanguageSwitch, useLocale } from '@/app/lib/i18n';
 
 interface HeaderProps {
   puzzleNumber: number | null;
+  kicker?: string | null;
   onOpenLeaderboard: () => void;
   onOpenStats: () => void;
   onOpenAuth: () => void;
@@ -16,6 +17,7 @@ interface HeaderProps {
 
 export default function Header({
   puzzleNumber,
+  kicker = null,
   onOpenLeaderboard,
   onOpenStats,
   onOpenAuth,
@@ -36,7 +38,9 @@ export default function Header({
             <h1 className="font-display text-xl font-bold tracking-wide text-white">
               Cine<span className="text-cinema-accent">Clue</span>
             </h1>
-            {puzzleNumber ? (
+            {kicker ? (
+              <p className="text-[11px] font-medium uppercase tracking-widest text-cinema-gold">{kicker}</p>
+            ) : puzzleNumber ? (
               <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
                 {m.puzzleOfDay(puzzleNumber)}
               </p>

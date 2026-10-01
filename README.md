@@ -17,6 +17,8 @@ Dal quarto tentativo compare un suggerimento su una categoria ancora non indovin
 
 Puoi giocare senza account: la partita resta su quel browser e non entra in classifica. Con un account, statistiche e partita del giorno si salvano e valgono anche da un altro dispositivo.
 
+**Endless mode** pesca un film a caso dal pool, sempre con sei tentativi. Alla fine il titolo viene rivelato anche se sbagli. Non assegna punti, streak né un posto in classifica, e puoi giocare un altro film subito.
+
 La lingua si cambia con le bandiere in alto. Italiano e inglese cambiano i testi e anche titoli e dati dei film.
 
 ### Avvio in locale
@@ -47,6 +49,8 @@ Search for a movie by title. Each guess shows year, country, director, genre, ca
 From the fourth guess, a hint appears for a category you have not solved yet. A win scores `(7 − guesses) × 100 + streak × 10`.
 
 You can play without an account: the game stays in that browser and does not enter the leaderboard. With an account, stats and today’s game are saved and follow you to another device.
+
+**Endless mode** draws a random movie from the pool, still with six guesses. The title is revealed at the end even if you miss it. It does not award points, streaks, or a leaderboard place, and you can play another movie right away.
 
 The flags at the top switch the language. Italian and English change the interface and the movie titles and details.
 

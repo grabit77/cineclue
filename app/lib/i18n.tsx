@@ -34,6 +34,12 @@ export interface Messages {
   legendArrows: string;
   footer: string;
   coffee: string;
+  endlessMode: string;
+  dailyMode: string;
+  playAgain: string;
+  theMovieWas: string;
+  endlessNote: string;
+  endlessAttempts: (n: number) => string;
   searchPlaceholder: string;
   searchDone: string;
   searchScoring: string;
@@ -195,6 +201,15 @@ const it: Messages = {
   legendArrows: 'Frecce = il film segreto è uscito o dura di più o di meno',
   footer: 'CineClue — un nuovo puzzle ogni giorno · Dati film © TMDb',
   coffee: 'Offrimi un caffè',
+  endlessMode: 'Endless mode',
+  dailyMode: 'Film del giorno',
+  playAgain: 'Gioca ancora',
+  theMovieWas: 'Il film era',
+  endlessNote: 'Niente punti, streak o classifica. Sei tentativi, un film a caso.',
+  endlessAttempts: (n) =>
+    n === 1
+      ? 'Hai 1 tentativo. Se non lo indovini, alla fine vedi comunque il film.'
+      : `Hai ${n} tentativi. Se non lo indovini, alla fine vedi comunque il film.`,
   searchPlaceholder: 'Cerca un film per titolo (es. Inception)…',
   searchDone: 'Partita conclusa: torna domani!',
   searchScoring: 'Valutazione in corso…',
@@ -360,6 +375,15 @@ const en: Messages = {
   legendArrows: 'Arrows = the secret movie was released or runs longer or shorter',
   footer: 'CineClue — a new puzzle every day · Movie data © TMDb',
   coffee: 'Buy me a coffee',
+  endlessMode: 'Endless mode',
+  dailyMode: 'Movie of the day',
+  playAgain: 'Play again',
+  theMovieWas: 'The movie was',
+  endlessNote: 'No points, streak, or leaderboard. Six guesses, a random movie.',
+  endlessAttempts: (n) =>
+    n === 1
+      ? 'You have 1 guess left. If you miss it, the movie is revealed at the end.'
+      : `You have ${n} guesses left. If you miss it, the movie is revealed at the end.`,
   searchPlaceholder: 'Search a movie by title (e.g. Inception)…',
   searchDone: 'Game over: come back tomorrow!',
   searchScoring: 'Checking your guess…',
