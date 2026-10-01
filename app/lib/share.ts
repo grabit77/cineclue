@@ -24,7 +24,11 @@ function feedbackEmojis(state: GameState): string {
     .join('\n');
 }
 
-export function buildShareText(state: GameState, profile: Profile): string {
+export function buildShareText(
+  state: GameState,
+  profile: Profile,
+  copy: { streak: (n: number) => string; cta: (site: string) => string }
+): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://cineclue.com';
 
   const header =
@@ -32,12 +36,10 @@ export function buildShareText(state: GameState, profile: Profile): string {
       ? `CineClue #${state.puzzleNumber} 🎬 ${state.wonAtAttempt}/${MAX_ATTEMPTS}`
       : `CineClue #${state.puzzleNumber} 🎬 X/${MAX_ATTEMPTS}`;
 
-  const streakLine = profile.currentStreak > 0 ? `🔥 Streak: ${profile.currentStreak} giorni` : null;
+  const streakLine = profile.currentStreak > 0 ? copy.streak(profile.currentStreak) : null;
   const grid = feedbackEmojis(state);
 
-  return [header, streakLine, '', grid, '', `Riesci a fare di meglio? Gioca su ${site}`]
-    .filter((l) => l !== null)
-    .join('\n');
+  return [header, streakLine, '', grid, '', copy.cta(site)].filter((l) => l !== null).join('\n');
 }
 
 export function facebookShareUrl(text: string): string {

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AlertCircle, ArrowLeft, CloudOff, KeyRound, LogOut, Mail } from 'lucide-react';
 
 import { useAuth } from '@/app/hooks/useAuth';
+import { useLocale } from '@/app/lib/i18n';
 import { Modal, Spinner } from './ui';
 
 type Mode = 'login' | 'register' | 'forgot';
@@ -20,6 +21,7 @@ export default function AuthModal({
 }) {
   const { configured, loading, user, signInWithPassword, signUp, resetPasswordForEmail, signOut } =
     useAuth();
+  const { m } = useLocale();
 
   const [mode, setMode] = useState<Mode>('login');
   const [displayName, setDisplayName] = useState('');
@@ -45,7 +47,7 @@ export default function AuthModal({
     setError(null);
     setInfo(null);
     if (!email || !password) {
-      setError('Inserisci email e password.');
+      setError(m.errEmailPassword);
       return;
     }
     setSubmitting(true);
@@ -65,19 +67,19 @@ export default function AuthModal({
     const cleanEmail = email.trim();
     const cleanName = displayName.trim().replace(/\s+/g, ' ');
     if (cleanName.length < 2 || cleanName.length > 24 || cleanName.includes('@')) {
-      setError('Scegli un nome da 2 a 24 caratteri, senza usare l’email.');
+      setError(m.errName);
       return;
     }
     if (!cleanEmail || !password) {
-      setError('Inserisci email e password.');
+      setError(m.errEmailPassword);
       return;
     }
     if (password.length < 6) {
-      setError('La password deve avere almeno 6 caratteri.');
+      setError(m.errPasswordShort);
       return;
     }
     if (password !== confirm) {
-      setError('Le password non coincidono.');
+      setError(m.errPasswordMatch);
       return;
     }
     setSubmitting(true);
@@ -91,7 +93,7 @@ export default function AuthModal({
       setEmail('');
       setPassword('');
       setConfirm('');
-      setInfo('Controlla la tua email e clicca sul link di conferma per attivare l\'account, poi accedi.');
+      setInfo(m.errConfirmEmail);
     } else {
       onClose();
     }
@@ -102,7 +104,7 @@ export default function AuthModal({
     setError(null);
     setInfo(null);
     if (!email) {
-      setError('Inserisci la tua email.');
+      setError(m.errEmailRequired);
       return;
     }
     setSubmitting(true);
@@ -112,7 +114,7 @@ export default function AuthModal({
       setError(result.error);
       return;
     }
-    setInfo('Se l\'email esiste, ti abbiamo inviato un link per reimpostare la password.');
+    setInfo(m.errResetSent);
   };
 
   const handleSignOut = async () => {
@@ -121,20 +123,14 @@ export default function AuthModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Account e salvataggio cloud">
+    <Modal open={open} onClose={onClose} title={m.authTitle}>
       {!configured ? (
         <div className="space-y-3 py-2 text-center">
           <CloudOff className="mx-auto h-10 w-10 text-slate-600" />
           <p className="text-sm text-slate-400">
-            Attualmente usi la modalità <strong className="text-white">Guest</strong>: il progresso è
-            salvato solo su questo dispositivo.
+            {m.guestOnly}
           </p>
-          <p className="text-xs text-slate-500">
-            Per attivare account e sincronizzazione cloud (email + password), configura un progetto
-            Supabase con il provider <strong className="text-slate-300">Email</strong> abilitato e
-            imposta le variabili <span className="font-mono">NEXT_PUBLIC_SUPABASE_URL</span> e{' '}
-            <span className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>.
-          </p>
+          <p className="text-xs text-slate-500">{m.guestSetup}</p>
         </div>
       ) : loading ? (
         <div className="flex justify-center py-8">
@@ -146,41 +142,39 @@ export default function AuthModal({
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-cinema-accent/20 text-lg font-bold text-cinema-accent">
               {(user.name ?? user.email ?? '?').slice(0, 1).toUpperCase()}
             </div>
-            <p className="font-semibold text-white">{user.name ?? 'Account collegato'}</p>
+            <p className="font-semibold text-white">{user.name ?? m.accountLinked}</p>
             {user.email ? <p className="text-xs text-slate-500">{user.email}</p> : null}
             <p className="mt-2 text-[11px] text-emerald-400">
-              Salvataggio sincronizzato con il cloud ✓
+              {m.synced}
             </p>
           </div>
           <button
             onClick={handleSignOut}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cinema-line bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
           >
-            <LogOut className="h-4 w-4" /> Esci dall'account
+            <LogOut className="h-4 w-4" /> {m.signOutAccount}
           </button>
         </div>
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-slate-400">
-            Accedi per sincronizzare statistiche e streak e partecipare alla classifica globale.
-            Puoi continuare a giocare come <strong className="text-white">Guest</strong> in qualsiasi
-            momento.
+            {m.authIntro}
           </p>
 
           {mode !== 'forgot' ? (
             <div className="flex rounded-xl border border-cinema-line bg-white/[0.02] p-1">
-              {(['login', 'register'] as const).map((m) => (
+              {(['login', 'register'] as const).map((tab) => (
                 <button
-                  key={m}
+                  key={tab}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => setMode(tab)}
                   className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                    mode === m
+                    mode === tab
                       ? 'bg-cinema-accent text-white'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {m === 'login' ? 'Accedi' : 'Registrati'}
+                  {tab === 'login' ? m.signIn : m.register}
                 </button>
               ))}
             </div>
@@ -204,7 +198,7 @@ export default function AuthModal({
             <form onSubmit={handleSignIn} className="space-y-3">
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Email
+                  {m.email}
                 </span>
                 <input
                   type="email"
@@ -217,7 +211,7 @@ export default function AuthModal({
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Password
+                  {m.password}
                 </span>
                 <input
                   type="password"
@@ -234,14 +228,14 @@ export default function AuthModal({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cinema-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c00812] active:scale-[0.98] disabled:opacity-50"
               >
                 {submitting ? <Spinner className="h-4 w-4" /> : null}
-                Accedi
+                {m.signIn}
               </button>
               <button
                 type="button"
                 onClick={() => setMode('forgot')}
                 className="mx-auto flex items-center gap-1.5 text-xs font-medium text-slate-400 transition hover:text-white"
               >
-                <KeyRound className="h-3.5 w-3.5" /> Password dimenticata?
+                <KeyRound className="h-3.5 w-3.5" /> {m.forgot}
               </button>
             </form>
           )}
@@ -250,13 +244,13 @@ export default function AuthModal({
             <form onSubmit={handleSignUp} className="space-y-3">
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Nome in classifica
+                  {m.leaderboardName}
                 </span>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Es. Marco"
+                  placeholder={m.namePlaceholder}
                   autoComplete="nickname"
                   maxLength={24}
                   className={inputClasses}
@@ -264,7 +258,7 @@ export default function AuthModal({
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Email
+                  {m.email}
                 </span>
                 <input
                   type="email"
@@ -277,26 +271,26 @@ export default function AuthModal({
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Password
+                  {m.password}
                 </span>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Almeno 6 caratteri"
+                  placeholder={m.passwordMin}
                   autoComplete="new-password"
                   className={inputClasses}
                 />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Conferma password
+                  {m.confirmPassword}
                 </span>
                 <input
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Ripeti la password"
+                  placeholder={m.repeatPassword}
                   autoComplete="new-password"
                   className={inputClasses}
                 />
@@ -307,7 +301,7 @@ export default function AuthModal({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cinema-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c00812] active:scale-[0.98] disabled:opacity-50"
               >
                 {submitting ? <Spinner className="h-4 w-4" /> : null}
-                Registrati
+                {m.register}
               </button>
             </form>
           )}
@@ -315,11 +309,11 @@ export default function AuthModal({
           {mode === 'forgot' && (
             <form onSubmit={handleForgot} className="space-y-3">
               <p className="text-xs text-slate-500">
-                Inserisci l'email dell'account: riceverai un link per reimpostare la password.
+                {m.forgotHelp}
               </p>
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Email
+                  {m.email}
                 </span>
                 <input
                   type="email"
@@ -336,14 +330,14 @@ export default function AuthModal({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cinema-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c00812] active:scale-[0.98] disabled:opacity-50"
               >
                 {submitting ? <Spinner className="h-4 w-4" /> : null}
-                Invia link di recupero
+                {m.sendReset}
               </button>
               <button
                 type="button"
                 onClick={() => setMode('login')}
                 className="mx-auto flex items-center gap-1.5 text-xs font-medium text-slate-400 transition hover:text-white"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Torna all'accesso
+                <ArrowLeft className="h-3.5 w-3.5" /> {m.backToSignIn}
               </button>
             </form>
           )}

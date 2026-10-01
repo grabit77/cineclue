@@ -7,6 +7,7 @@ import { useAuth } from '@/app/hooks/useAuth';
 import { useGame } from '@/app/hooks/useGame';
 import { pointsForWin } from '@/app/lib/storage';
 import { isSupabaseConfigured } from '@/app/lib/supabaseClient';
+import { useLocale } from '@/app/lib/i18n';
 
 import Header from './Header';
 import SearchInput from './SearchInput';
@@ -20,6 +21,7 @@ import Toast from './Toast';
 
 export default function Game() {
   const auth = useAuth();
+  const { m } = useLocale();
   const game = useGame({
     user: auth.user ? { id: auth.user.id } : null,
     authReady: !auth.loading,
@@ -50,7 +52,7 @@ export default function Game() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <Clapperboard className="h-10 w-10 animate-pulse text-cinema-accent" />
-          <p className="text-sm">Si accendono i proiettori…</p>
+          <p className="text-sm">{m.projectors}</p>
         </div>
       </div>
     );
@@ -76,13 +78,11 @@ export default function Game() {
         {/* Intestazione puzzle */}
         <div className="mb-5 text-center">
           <h2 className="font-display text-3xl font-black text-white">
-            Indovina il <span className="text-cinema-accent">Film del Giorno</span>
+            {m.guessHeadingBefore}
+            <span className="text-cinema-accent">{m.guessTitle}</span>
+            {m.guessHeadingAfter}
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Hai <strong className="text-white">{remaining}</strong>{' '}
-            tentativ{remaining === 1 ? 'o' : 'i'} a disposizione. Il film si rivela solo se lo
-            indovini: altrimenti, torna domani per un nuovo puzzle.
-          </p>
+          <p className="mt-1 text-sm text-slate-400">{m.attemptsLeft(remaining)}</p>
         </div>
 
         {/* Input / stato partita */}
@@ -95,7 +95,7 @@ export default function Game() {
             />
             {suggestHint && !state?.hint && (
               <p className="mt-2 text-center text-xs text-slate-500">
-                💡 Confronta anno, paese, regista, genere, cast e durata per avvicinarti al film segreto.
+                💡 {m.compareHint}
               </p>
             )}
           </div>
@@ -103,7 +103,7 @@ export default function Game() {
 
         {state?.hint ? (
           <p className="mx-auto mb-6 max-w-xl rounded-xl border border-cinema-gold/30 bg-cinema-gold/10 px-3 py-2 text-center text-sm text-cinema-gold">
-            Suggerimento: <span className="font-semibold text-white">{state.hint.label}</span> — {state.hint.value}
+            {m.hint}: <span className="font-semibold text-white">{m.columns[state.hint.category]}</span> — {state.hint.value}
           </p>
         ) : null}
 
@@ -119,19 +119,19 @@ export default function Game() {
         {/* Legenda */}
         {!gameOver && (
           <div className="mt-8 rounded-2xl border border-cinema-line bg-white/[0.02] p-4 text-xs text-slate-400">
-            <p className="mb-2 font-bold uppercase tracking-widest text-slate-500">Legenda</p>
+            <p className="mb-2 font-bold uppercase tracking-widest text-slate-500">{m.legend}</p>
             <ul className="grid gap-1.5 sm:grid-cols-2">
-              <li>🟩 Colonna verde = dato esatto</li>
-              <li>🟨 Giallo = parziale (paese, genere in comune o qualche attore)</li>
-              <li>🟥 Rosso = dato diverso</li>
-              <li>⬆️⬇️ Frecce = il film segreto è uscito/dura di più o di meno</li>
+              <li>🟩 {m.legendExact}</li>
+              <li>🟨 {m.legendPartial}</li>
+              <li>🟥 {m.legendWrong}</li>
+              <li>⬆️⬇️ {m.legendArrows}</li>
             </ul>
           </div>
         )}
 
         {/* Footer */}
         <p className="mt-10 text-center text-[11px] text-slate-600">
-          🎬 CineClue — un nuovo puzzle ogni giorno · Dati film © TMDb
+          🎬 {m.footer}
         </p>
       </main>
 

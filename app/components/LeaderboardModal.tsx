@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
 import type { LeaderboardEntry } from '@/app/lib/types';
 import { fetchLeaderboard, type LeaderboardRow } from '@/app/lib/supabaseClient';
 import { isSupabaseConfigured } from '@/app/lib/supabaseClient';
+import { useLocale } from '@/app/lib/i18n';
 import { Modal, Spinner } from './ui';
 
 interface LeaderboardModalProps {
@@ -14,9 +15,9 @@ interface LeaderboardModalProps {
   currentUserId: string | null;
 }
 
-function formatPoints(points: number | null): string {
+function formatPoints(points: number | null, locale: string): string {
   if (points == null) return '—';
-  return points.toLocaleString('it-IT');
+  return points.toLocaleString(locale === 'en' ? 'en-US' : 'it-IT');
 }
 
 function toEntries(rows: LeaderboardRow[]): LeaderboardEntry[] {
@@ -34,6 +35,7 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
   const [setupRequired, setSetupRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const { locale, m } = useLocale();
   const PAGE_SIZE = 10;
 
   useEffect(() => {
@@ -55,12 +57,12 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
   const visible = rows.slice(clampedPage * PAGE_SIZE, clampedPage * PAGE_SIZE + PAGE_SIZE);
 
   return (
-    <Modal open={open} onClose={onClose} title="Classifica globale" maxWidth="max-w-lg">
+    <Modal open={open} onClose={onClose} title={m.leaderboard} maxWidth="max-w-lg">
       {!isSupabaseConfigured() ? (
         <div className="py-4 text-center">
           <Trophy className="mx-auto mb-3 h-10 w-10 text-slate-600" />
           <p className="text-sm text-slate-400">
-            La classifica globale è disponibile solo quando Supabase è configurato.
+            {m.lbUnavailable}
           </p>
           <p className="mt-2 font-mono text-[11px] text-slate-600">NEXT_PUBLIC_SUPABASE_*</p>
         </div>
@@ -71,16 +73,15 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
       ) : setupRequired ? (
         <div className="space-y-2 py-4 text-center">
           <p className="text-sm text-slate-400">
-            La classifica non è ancora attiva: le tabelle necessarie non esistono nel database.
+            {m.lbSetup}
           </p>
           <p className="text-xs text-slate-500">
-            Apri il progetto nella dashboard Supabase → SQL Editor ed esegui
-            <span className="mx-1 font-mono text-cinema-gold">supabase/schema.sql</span>.
+            {m.lbSetupHint}
           </p>
         </div>
       ) : rows.length === 0 ? (
         <p className="py-6 text-center text-sm text-slate-400">
-          Nessun punteggio ancora. Vinci una partita per entrare in classifica.
+          {m.lbEmpty}
         </p>
       ) : (
         <>
@@ -112,16 +113,16 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-white">
-                      {row.username || 'Giocatore'}
-                      {isMe ? <span className="ml-2 text-[10px] text-cinema-gold">(tu)</span> : null}
+                      {row.username || m.player}
+                      {isMe ? <span className="ml-2 text-[10px] text-cinema-gold">{m.you}</span> : null}
                     </p>
-                    <p className="text-[11px] text-slate-500">{row.totalWins} vittorie · 🔥 {row.currentStreak}</p>
+                    <p className="text-[11px] text-slate-500">{m.winsCount(row.totalWins)} · 🔥 {row.currentStreak}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-base font-bold text-cinema-gold">
-                      {formatPoints(row.totalPoints)}
+                      {formatPoints(row.totalPoints, locale)}
                     </p>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">punti</p>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500">{m.points}</p>
                   </div>
                 </li>
               );
@@ -133,7 +134,7 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
               <button
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={clampedPage === 0}
-                aria-label="Pagina precedente"
+                aria-label={m.prevPage}
                 className="rounded-lg p-1.5 text-slate-400 transition hover:text-white disabled:opacity-30"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -144,7 +145,7 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
               <button
                 onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
                 disabled={clampedPage >= pages - 1}
-                aria-label="Pagina successiva"
+                aria-label={m.nextPage}
                 className="rounded-lg p-1.5 text-slate-400 transition hover:text-white disabled:opacity-30"
               >
                 <ChevronRight className="h-5 w-5" />

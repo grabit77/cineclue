@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowUp, Check, X } from 'lucide-react';
 
 import type { Guess } from '@/app/lib/types';
+import { useLocale } from '@/app/lib/i18n';
 
 const MAX_SHARED_NAMES = 3;
 
@@ -33,20 +34,21 @@ function CellLabel({ children }: { children: string }) {
 }
 
 function YearCell({ feedback }: { feedback: Guess['feedback']['year'] }) {
+  const { m } = useLocale();
   if (feedback.status === 'exact') {
     return (
       <div className={cellClass('green')}>
-        <CellLabel>Anno</CellLabel>
+        <CellLabel>{m.columns.year}</CellLabel>
         <span className="text-sm font-bold leading-none sm:text-base">{feedback.value}</span>
       </div>
     );
   }
   const up = feedback.status === 'up';
   const Arrow = up ? ArrowUp : ArrowDown;
-  const title = up ? 'Il film segreto è uscito dopo' : 'Il film segreto è uscito prima';
+  const title = up ? m.yearAfter : m.yearBefore;
   return (
     <div className={cellClass('neutral')} title={title}>
-      <CellLabel>Anno</CellLabel>
+      <CellLabel>{m.columns.year}</CellLabel>
       <span className="flex items-center gap-1 text-sm font-bold leading-none sm:text-base">
         <Arrow className="h-3.5 w-3.5" />
         {feedback.value}
@@ -56,10 +58,11 @@ function YearCell({ feedback }: { feedback: Guess['feedback']['year'] }) {
 }
 
 function CountryCell({ feedback }: { feedback: Guess['feedback']['country'] | undefined }) {
+  const { m } = useLocale();
   if (!feedback) {
     return (
       <div className={cellClass('neutral')}>
-        <CellLabel>Paese</CellLabel>
+        <CellLabel>{m.columns.country}</CellLabel>
         <span className="text-[10px] font-semibold leading-tight sm:text-xs">—</span>
       </div>
     );
@@ -67,7 +70,7 @@ function CountryCell({ feedback }: { feedback: Guess['feedback']['country'] | un
   const variant = feedback.status === 'match' ? 'green' : feedback.status === 'partial' ? 'yellow' : 'red';
   return (
     <div className={cellClass(variant)} title={feedback.name ?? undefined}>
-      <CellLabel>Paese</CellLabel>
+      <CellLabel>{m.columns.country}</CellLabel>
       <span className="line-clamp-2 text-[10px] font-semibold leading-tight sm:text-xs">
         {feedback.name ?? '—'}
       </span>
@@ -76,10 +79,11 @@ function CountryCell({ feedback }: { feedback: Guess['feedback']['country'] | un
 }
 
 function DirectorCell({ feedback }: { feedback: Guess['feedback']['director'] }) {
+  const { m } = useLocale();
   const match = feedback.status === 'match';
   return (
     <div className={cellClass(match ? 'green' : 'red')} title={feedback.name ?? undefined}>
-      <CellLabel>Regista</CellLabel>
+      <CellLabel>{m.columns.director}</CellLabel>
       <span className="line-clamp-2 text-[10px] font-semibold leading-tight sm:text-xs">
         {feedback.name ?? '—'}
       </span>
@@ -88,10 +92,11 @@ function DirectorCell({ feedback }: { feedback: Guess['feedback']['director'] })
 }
 
 function GenreCell({ feedback }: { feedback: Guess['feedback']['genre'] }) {
+  const { m } = useLocale();
   const variant = feedback.status === 'match' ? 'green' : feedback.status === 'partial' ? 'yellow' : 'red';
   return (
     <div className={cellClass(variant)} title={feedback.name ?? undefined}>
-      <CellLabel>Genere</CellLabel>
+      <CellLabel>{m.columns.genre}</CellLabel>
       <span className="line-clamp-2 text-[10px] font-semibold leading-tight sm:text-xs">
         {feedback.name ?? '—'}
       </span>
@@ -100,12 +105,13 @@ function GenreCell({ feedback }: { feedback: Guess['feedback']['genre'] }) {
 }
 
 function CastCell({ feedback }: { feedback: Guess['feedback']['cast'] }) {
+  const { m } = useLocale();
   if (feedback.status === 'match') {
     return (
       <div className={cellClass('green')}>
-        <CellLabel>Cast</CellLabel>
+        <CellLabel>{m.columns.cast}</CellLabel>
         <span className="flex items-center gap-1 text-[10px] font-semibold sm:text-xs">
-          <Check className="h-3 w-3" /> Completo
+          <Check className="h-3 w-3" /> {m.castFull}
         </span>
       </div>
     );
@@ -116,28 +122,29 @@ function CastCell({ feedback }: { feedback: Guess['feedback']['cast'] }) {
     const names = visible.join(', ') + (extra > 0 ? ` +${extra}` : '');
     return (
       <div className={cellClass('yellow')}>
-        <CellLabel>Cast</CellLabel>
+        <CellLabel>{m.columns.cast}</CellLabel>
         <p className="line-clamp-3 text-[9px] font-semibold leading-tight sm:text-[10px]">
-          In comune: {names}
+          {m.castShared(names)}
         </p>
       </div>
     );
   }
   return (
     <div className={cellClass('red')}>
-      <CellLabel>Cast</CellLabel>
+      <CellLabel>{m.columns.cast}</CellLabel>
       <span className="flex items-center gap-1 text-[10px] font-semibold sm:text-xs">
-        <X className="h-3 w-3" /> Nessuno
+        <X className="h-3 w-3" /> {m.castNone}
       </span>
     </div>
   );
 }
 
 function RuntimeCell({ feedback }: { feedback: Guess['feedback']['runtime'] }) {
+  const { m } = useLocale();
   if (feedback.status === 'exact') {
     return (
       <div className={cellClass('green')}>
-        <CellLabel>Durata</CellLabel>
+        <CellLabel>{m.columns.runtime}</CellLabel>
         <span className="text-sm font-bold leading-none sm:text-base">
           {feedback.value}
           <span className="text-[10px]">′</span>
@@ -147,10 +154,10 @@ function RuntimeCell({ feedback }: { feedback: Guess['feedback']['runtime'] }) {
   }
   const up = feedback.status === 'up';
   const Arrow = up ? ArrowUp : ArrowDown;
-  const title = up ? 'Il film segreto dura di più' : 'Il film segreto dura di meno';
+  const title = up ? m.runtimeLonger : m.runtimeShorter;
   return (
     <div className={cellClass('neutral')} title={title}>
-      <CellLabel>Durata</CellLabel>
+      <CellLabel>{m.columns.runtime}</CellLabel>
       <span className="flex items-center gap-0.5 text-sm font-bold leading-none sm:text-base">
         <Arrow className="h-3.5 w-3.5" />
         {feedback.value}
@@ -161,14 +168,14 @@ function RuntimeCell({ feedback }: { feedback: Guess['feedback']['runtime'] }) {
 }
 
 function EmptyRow({ label }: { label: string }) {
+  const { m } = useLocale();
+  const names = [m.columns.year, m.columns.country, m.columns.director, m.columns.genre, m.columns.cast, m.columns.runtime];
   return (
     <div className="rounded-2xl border border-dashed border-cinema-line/70 bg-white/[0.015] px-3 py-2">
       <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className={cellClass('neutral')}>
-            <span className="text-[10px] text-slate-600">
-              {['Anno', 'Paese', 'Regista', 'Genere', 'Cast', 'Durata'][i]}
-            </span>
+        {names.map((name) => (
+          <div key={name} className={cellClass('neutral')}>
+            <span className="text-[10px] text-slate-600">{name}</span>
           </div>
         ))}
       </div>
@@ -184,9 +191,10 @@ interface GuessRowProps {
 }
 
 export default function GuessRow({ index, guess, lastWon }: GuessRowProps) {
+  const { m } = useLocale();
   if (!guess) {
     return (
-      <EmptyRow label={index === 0 ? `Tentativo ${index + 1} — seleziona un film qui sopra` : ''} />
+      <EmptyRow label={index === 0 ? m.attemptPick(index + 1) : ''} />
     );
   }
 
@@ -213,12 +221,12 @@ export default function GuessRow({ index, guess, lastWon }: GuessRowProps) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-white">{guess.title}</p>
           <p className="text-[11px] text-slate-400">
-            Tentativo {index + 1}/6 · {guess.year ?? 'anno  sconosciuto'}
+            {m.attemptLine(index + 1, guess.year ? String(guess.year) : m.unknownYear)}
           </p>
         </div>
         {lastWon ? (
           <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-400">
-            Win!
+            {m.winBadge}
           </span>
         ) : null}
       </div>

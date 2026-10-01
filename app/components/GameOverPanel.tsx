@@ -4,9 +4,8 @@ import { useState } from 'react';
 import { Check, Copy, Facebook, Flame, Share2, Trophy } from 'lucide-react';
 
 import type { GameState, Profile } from '@/app/lib/types';
-import { MAX_ATTEMPTS } from '@/app/lib/types';
 import { buildShareText, copyToClipboard, facebookShareUrl, webShare } from '@/app/lib/share';
-import { pointsForWin } from '@/app/lib/storage';
+import { useLocale } from '@/app/lib/i18n';
 import Countdown from './Countdown';
 import { Spinner } from './ui';
 
@@ -17,12 +16,13 @@ interface GameOverPanelProps {
 }
 
 export default function GameOverPanel({ state, profile, outcome }: GameOverPanelProps) {
+  const { m } = useLocale();
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [fbBusy, setFbBusy] = useState(false);
 
   const won = state.status === 'won';
-  const text = buildShareText(state, profile);
+  const text = buildShareText(state, profile, { streak: m.shareStreak, cta: m.shareCta });
   const nextPuzzle = state.puzzleNumber + 1;
 
   const handleCopy = async () => {
@@ -74,23 +74,14 @@ export default function GameOverPanel({ state, profile, outcome }: GameOverPanel
           </span>
         )}
         <h3 className="font-display text-xl font-bold text-white">
-          {won ? `Vittoria al ${state.wonAtAttempt}° tentativo!` : 'Game Over'}
+          {won ? m.winTitle(state.wonAtAttempt ?? 0) : m.gameOver}
         </h3>
       </div>
 
       <p className="mb-4 text-sm text-slate-300">
-        {won ? (
-          <>
-            Hai vinto in {state.wonAtAttempt}/{MAX_ATTEMPTS} tentativi con{' '}
-            <span className="font-semibold text-emerald-400">{outcome?.points ?? 0} punti</span> e
-            una streak di <span className="font-semibold text-orange-400">{outcome?.newStreak ?? profile.currentStreak}</span>.
-          </>
-        ) : (
-          <>
-            Il film di oggi resta un mistero. 💀 Nessuno spoiler: torna domani per il puzzle{' '}
-            <span className="font-semibold text-white">#{nextPuzzle}</span>!
-          </>
-        )}
+        {won
+          ? m.winBody(state.wonAtAttempt ?? 0, outcome?.points ?? 0, outcome?.newStreak ?? profile.currentStreak)
+          : m.loseBody(nextPuzzle)}
       </p>
 
       {/* Anteprima griglia condivisa */}
@@ -111,14 +102,14 @@ export default function GameOverPanel({ state, profile, outcome }: GameOverPanel
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-cinema-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c00812] disabled:opacity-60"
         >
           <Share2 className="h-4 w-4" />
-          {sharing ? <Spinner className="h-4 w-4" /> : 'Condividi'}
+          {sharing ? <Spinner className="h-4 w-4" /> : m.share}
         </button>
         <button
           onClick={handleCopy}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-cinema-line bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
         >
           {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-          {copied ? 'Copiato!' : 'Copia'}
+          {copied ? m.copied : m.copy}
         </button>
         <button
           onClick={handleFacebook}

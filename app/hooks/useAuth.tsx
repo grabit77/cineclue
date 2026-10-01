@@ -17,6 +17,7 @@ import {
   pullCloudProfile,
   pushCloudProfile
 } from '@/app/lib/supabaseClient';
+import { knownError, useLocale } from '@/app/lib/i18n';
 
 export interface AuthUser {
   id: string;
@@ -46,18 +47,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function authErrorMessage(message: string | null | undefined): string {
-  const text = message ?? 'Qualcosa è andato storto. Riprova.';
-  if (/email rate limit exceeded/i.test(text)) {
-    return 'Troppe email inviate da Supabase. La registrazione non ne manda più: riprova tra un minuto. Il recupero password può richiedere fino a un’ora.';
-  }
-  if (/invalid login credentials/i.test(text)) {
-    return 'Email o password non corretti.';
-  }
-  if (/already registered|already exists/i.test(text)) {
-    return 'Esiste già un account con questa email. Prova ad accedere.';
-  }
-  return text;
+function authErrorMessage(message: string | null | undefined, fallback: string, translate: (text: string) => string): string {
+  return translate(message ?? fallback);
 }
 
 function userFromSession(session: { user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> } } | null): AuthUser | null {
@@ -112,6 +103,8 @@ async function syncSessionAndCloud(session: Session): Promise<void> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { m } = useLocale();
+  const explain = (message: string | null | undefined) => authErrorMessage(message, m.errGeneric, (text) => knownError(text, m));
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const configured = isSupabaseConfigured();
@@ -146,10 +139,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPassword = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const supabase = getSupabaseBrowser();
-    if (!supabase) return { error: 'Supabase non configurato.' };
+    if (!supabase) return { error: m.supabaseMissing };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error ? authErrorMessage(error.message) : null };
-  }, []);
+    return { error: error ? explain(error.message) : null };
+  }, [explain, m.supabaseMissing]);
 
   const signUp = useCallback(
     async (
@@ -158,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName: string
     ): Promise<AuthResult & { needsEmailConfirmation: boolean }> => {
       const supabase = getSupabaseBrowser();
-      if (!supabase) return { error: 'Supabase non configurato.', needsEmailConfirmation: false };
+      if (!supabase) return { error: m.supabaseMissing, needsEmailConfirmation: false };
 
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -167,23 +160,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const payload = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        return { error: authErrorMessage(payload?.error), needsEmailConfirmation: false };
+        return { error: explain(payload?.error), needsEmailConfirmation: false };
       }
 
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error: error ? authErrorMessage(error.message) : null, needsEmailConfirmation: false };
+      return { error: error ? explain(error.message) : null, needsEmailConfirmation: false };
     },
-    []
+    [explain, m.supabaseMissing]
   );
 
   const resetPasswordForEmail = useCallback(async (email: string): Promise<AuthResult> => {
     const supabase = getSupabaseBrowser();
-    if (!supabase) return { error: 'Supabase non configurato.' };
+    if (!supabase) return { error: m.supabaseMissing };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`
     });
-    return { error: error ? authErrorMessage(error.message) : null };
-  }, []);
+    return { error: error ? explain(error.message) : null };
+  }, [explain, m.supabaseMissing]);
 
   const signOut = useCallback(async () => {
     const supabase = getSupabaseBrowser();

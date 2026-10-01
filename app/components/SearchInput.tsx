@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CornerDownLeft, Search, SearchX } from 'lucide-react';
 
 import type { SearchResult } from '@/app/lib/types';
+import { useLocale } from '@/app/lib/i18n';
 import { Spinner } from './ui';
 
 interface SearchInputProps {
@@ -18,6 +19,7 @@ function posterUrl(path: string | null): string | null {
 }
 
 export default function SearchInput({ disabled, submitting, onSelect }: SearchInputProps) {
+  const { locale, m } = useLocale();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -33,9 +35,9 @@ export default function SearchInput({ disabled, submitting, onSelect }: SearchIn
     const seq = ++seqRef.current;
     setSearching(true);
     setError(null);
-    fetch(`/api/search?q=${encodeURIComponent(text)}`)
+    fetch(`/api/search?q=${encodeURIComponent(text)}&lang=${locale}`)
       .then(async (res) => {
-        if (!res.ok) throw new Error('Ricerca non disponibile');
+        if (!res.ok) throw new Error(m.searchUnavailable);
         return (await res.json()) as { results: SearchResult[] };
       })
       .then((data) => {
@@ -46,13 +48,13 @@ export default function SearchInput({ disabled, submitting, onSelect }: SearchIn
       })
       .catch(() => {
         if (seq !== seqRef.current) return;
-        setError('Impossibile contattare il motore di ricerca.');
+        setError(m.searchFailed);
         setOpen(true);
       })
       .finally(() => {
         if (seq === seqRef.current) setSearching(false);
       });
-  }, []);
+  }, [locale, m.searchFailed, m.searchUnavailable]);
 
   // Debounce della ricerca mentre si digita.
   useEffect(() => {
@@ -146,11 +148,7 @@ export default function SearchInput({ disabled, submitting, onSelect }: SearchIn
           }}
           onFocus={() => hasQuery && (results.length > 0 || searching) && setOpen(true)}
           placeholder={
-            disabled
-              ? 'Partita conclusa: torna domani!'
-              : submitting
-                ? 'Valutazione in corso…'
-                : 'Cerca un film per titolo (es. Inception)…'
+            disabled ? m.searchDone : submitting ? m.searchScoring : m.searchPlaceholder
           }
           className="w-full rounded-2xl border border-cinema-line bg-cinema-surfacelight py-3.5 pl-11 pr-11 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cinema-accent/70 focus:ring-2 focus:ring-cinema-accent/30 disabled:opacity-60"
         />
@@ -167,7 +165,7 @@ export default function SearchInput({ disabled, submitting, onSelect }: SearchIn
         <ul className="absolute z-40 mt-2 max-h-80 w-full overflow-auto rounded-2xl border border-cinema-line bg-cinema-surface py-1.5 shadow-2xl">
           {searching && results.length === 0 ? (
             <li className="flex items-center gap-2 px-4 py-3 text-sm text-slate-400">
-              <Spinner className="h-4 w-4" /> Cerco &quot;{query.trim()}&quot;…
+              <Spinner className="h-4 w-4" /> {m.searching(query.trim())}
             </li>
           ) : null}
 
@@ -179,24 +177,24 @@ export default function SearchInput({ disabled, submitting, onSelect }: SearchIn
 
           {!searching && results.length === 0 && !error && (
             <li className="px-4 py-3 text-sm text-slate-400">
-              Nessun film trovato per &quot;{query.trim()}&quot;
+              {m.noMovies(query.trim())}
             </li>
           )}
 
-          {results.map((m, i) => (
-            <li key={m.id}>
+          {results.map((movie, i) => (
+            <li key={movie.id}>
               <button
                 type="button"
-                onClick={() => pick(m)}
+                onClick={() => pick(movie)}
                 onMouseEnter={() => setActiveIndex(i)}
                 className={`flex w-full items-center gap-3 px-3.5 py-2 text-left transition ${
                   i === activeIndex ? 'bg-white/[0.07]' : 'hover:bg-white/[0.04]'
                 }`}
               >
-                {posterUrl(m.posterPath) ? (
+                {posterUrl(movie.posterPath) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={posterUrl(m.posterPath)!}
+                    src={posterUrl(movie.posterPath)!}
                     alt=""
                     className="h-12 w-8 shrink-0 rounded-md object-cover"
                   />
@@ -206,8 +204,8 @@ export default function SearchInput({ disabled, submitting, onSelect }: SearchIn
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-white">{m.title}</span>
-                  <span className="text-xs text-slate-400">{m.year ?? 'Anno sconosciuto'}</span>
+                  <span className="block truncate text-sm font-semibold text-white">{movie.title}</span>
+                  <span className="text-xs text-slate-400">{movie.year ?? m.unknownYear}</span>
                 </span>
                 {i === activeIndex && (
                   <span className="shrink-0 text-slate-500">

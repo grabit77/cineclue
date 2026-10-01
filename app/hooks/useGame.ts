@@ -24,6 +24,7 @@ import {
   saveProfile
 } from '@/app/lib/storage';
 import { isSupabaseConfigured, submitDailyScore } from '@/app/lib/supabaseClient';
+import { knownError, useLocale } from '@/app/lib/i18n';
 
 interface UseGameOptions {
   user: { id: string } | null;
@@ -52,6 +53,7 @@ export interface UseGame {
 }
 
 export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGame {
+  const { locale, m } = useLocale();
   const [dailyInfo, setDailyInfo] = useState<DailyInfo | null>(null);
   const [state, setState] = useState<GameState | null>(null);
   const [profile, setProfile] = useState<Profile>(() => loadProfile());
@@ -72,12 +74,12 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
         cleanupOldStates(info.date);
       })
       .catch(() => {
-        if (!cancelled) setError('Impossibile contattare il server. Ricarica la pagina.');
+        if (!cancelled) setError(m.errServer);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [m.errServer]);
 
   // Inizializza lo stato della partita quando conosciamo la data e il numero puzzle.
   useEffect(() => {
@@ -160,7 +162,7 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
     fetch('/api/hint', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: state.date, solved })
+      body: JSON.stringify({ date: state.date, solved, lang: locale })
     })
       .then(async (res) => {
         if (!res.ok) return null;
@@ -181,14 +183,14 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
     return () => {
       cancelled = true;
     };
-  }, [state]);
+  }, [state, locale]);
 
   const submitGuess = useCallback(
     async (movieId: number) => {
       if (!state || state.status !== 'playing' || !accountReady) return;
       if (submittingRef.current) return;
       if (state.guesses.some((g) => g.id === movieId)) {
-        setError('Hai già provato questo film.');
+        setError(m.errAlreadyTried);
         return;
       }
 
@@ -200,7 +202,7 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
         const res = await fetch('/api/guess', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ movieId, date: state.date })
+          body: JSON.stringify({ movieId, date: state.date, lang: locale })
         });
 
         if (!res.ok) {
@@ -211,7 +213,7 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
             setState(next);
             return;
           }
-          throw new Error(payload?.error ?? 'Errore nella valutazione del tentativo.');
+          throw new Error(knownError(payload?.error ?? m.errGuess, m));
         }
 
         const data = (await res.json()) as SubmitGuessResult;
@@ -257,13 +259,13 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
         saveProfile(nextProfile);
         setProfile(nextProfile);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.');
+        setError(err instanceof Error ? knownError(err.message, m) : m.errGeneric);
       } finally {
         submittingRef.current = false;
         setSubmitting(false);
       }
     },
-    [state, profile, user, syncProfile, accountReady]
+    [state, profile, user, syncProfile, accountReady, locale, m]
   );
 
   return {

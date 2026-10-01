@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { resolveDailyMovieId } from '@/app/lib/dailyMovie';
 import { buildCategoryHint } from '@/app/lib/hint';
-import { isTmdbConfigured, loadMovie } from '@/app/lib/tmdb';
+import { contentLocale, isTmdbConfigured, loadMovie } from '@/app/lib/tmdb';
 import { isValidPuzzleDate } from '@/app/lib/dates';
 import type { HintCategory } from '@/app/lib/types';
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { date?: unknown; solved?: unknown };
+  let body: { date?: unknown; solved?: unknown; lang?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
   try {
     const secretId = await resolveDailyMovieId(date);
-    const secret = await loadMovie(secretId);
+    const secret = await loadMovie(secretId, contentLocale(body.lang));
     const hint = buildCategoryHint(date, secret, parseSolved(body.solved));
     return NextResponse.json({ hint });
   } catch (err) {

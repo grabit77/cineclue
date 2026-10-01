@@ -3,6 +3,8 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 
+import { useLocale } from '@/app/lib/i18n';
+
 export function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg
@@ -34,6 +36,7 @@ export function Modal({
   children: ReactNode;
   maxWidth?: string;
 }) {
+  const { m } = useLocale();
   if (!open) return null;
   return (
     <div
@@ -50,7 +53,7 @@ export function Modal({
           <h2 className="font-display text-xl font-bold text-white">{title}</h2>
           <button
             onClick={onClose}
-            aria-label="Chiudi"
+            aria-label={m.close}
             className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white"
           >
             <X className="h-5 w-5" />

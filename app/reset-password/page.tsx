@@ -1,16 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, Check, Clapperboard, KeyRound } from 'lucide-react';
 
 import { isSupabaseConfigured, getSupabaseBrowser } from '@/app/lib/supabaseClient';
+import { knownError, LanguageSwitch, useLocale } from '@/app/lib/i18n';
 import { Spinner } from '@/app/components/ui';
 
 const inputClasses =
   'w-full rounded-xl border border-cinema-line bg-white/[0.04] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cinema-accent/70 focus:bg-white/[0.06]';
 
 export default function ResetPasswordPage() {
+  const { m } = useLocale();
+  const messagesRef = useRef(m);
+  messagesRef.current = m;
   const [exchanging, setExchanging] = useState(true);
   const [exchangeError, setExchangeError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
@@ -26,7 +30,7 @@ export default function ResetPasswordPage() {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const supabase = getSupabaseBrowser();
     if (!supabase) {
-      setExchangeError('Supabase non configurato.');
+      setExchangeError(messagesRef.current.supabaseMissing);
       setExchanging(false);
       return;
     }
@@ -72,10 +76,10 @@ export default function ResetPasswordPage() {
       }
 
       const { data } = await supabase.auth.getSession();
-      finish(data.session ? null : 'Link di recupero mancante o non valido.');
+      finish(data.session ? null : messagesRef.current.resetMissing);
     };
 
-    establish().catch(() => finish('Link di recupero mancante o non valido.'));
+    establish().catch(() => finish(messagesRef.current.resetMissing));
     return () => {
       active = false;
     };
@@ -88,15 +92,15 @@ export default function ResetPasswordPage() {
 
     const supabase = getSupabaseBrowser();
     if (!supabase) {
-      setError('Supabase non configurato.');
+      setError(m.supabaseMissing);
       return;
     }
     if (password.length < 6) {
-      setError('La password deve avere almeno 6 caratteri.');
+      setError(m.errPasswordShort);
       return;
     }
     if (password !== confirm) {
-      setError('Le password non coincidono.');
+      setError(m.errPasswordMatch);
       return;
     }
 
@@ -105,13 +109,13 @@ export default function ResetPasswordPage() {
     setSubmitting(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(knownError(updateError.message, m));
       return;
     }
 
     setPassword('');
     setConfirm('');
-    setInfo('Password aggiornata. Ora puoi accedere con la nuova password.');
+    setInfo(m.passwordUpdated);
   };
 
   return (
@@ -120,36 +124,41 @@ export default function ResetPasswordPage() {
 
       <div className="w-full max-w-md">
         <div className="animate-fade-up rounded-2xl border border-cinema-line bg-cinema-surface p-6 shadow-card">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cinema-accent/15 text-cinema-accent">
-              <Clapperboard className="h-5 w-5" />
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cinema-accent/15 text-cinema-accent">
+                <Clapperboard className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="font-display text-xl font-bold text-white">CineClue</h1>
+                <p className="text-xs uppercase tracking-widest text-slate-400">{m.resetTitle}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-display text-xl font-bold text-white">CineClue</h1>
-              <p className="text-xs uppercase tracking-widest text-slate-400">Nuova password</p>
-            </div>
+            <LanguageSwitch />
           </div>
 
           <div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
             <KeyRound className="h-4 w-4" />
-            <span>Imposta una nuova password per il tuo account.</span>
+            <span>{m.resetIntro}</span>
           </div>
 
           {exchanging ? (
             <div className="flex items-center justify-center gap-3 py-6 text-slate-400">
-              <Spinner className="h-5 w-5" /> Verifico il link…
+              <Spinner className="h-5 w-5" /> {m.resetChecking}
             </div>
           ) : exchangeError ? (
             <div className="space-y-4">
               <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-400">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>{exchangeError} Richiedi un nuovo link dalla schermata di accesso.</p>
+                <p>
+                  {exchangeError} {m.resetAskAgain}
+                </p>
               </div>
               <Link
                 href="/"
                 className="inline-flex w-full items-center justify-center rounded-xl bg-cinema-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c00812]"
               >
-                Torna a CineClue
+                {m.backHome}
               </Link>
             </div>
           ) : (
@@ -169,26 +178,26 @@ export default function ResetPasswordPage() {
 
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Nuova password
+                  {m.newPassword}
                 </span>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Almeno 6 caratteri"
+                  placeholder={m.passwordMin}
                   autoComplete="new-password"
                   className={inputClasses}
                 />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Conferma password
+                  {m.confirmPassword}
                 </span>
                 <input
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Ripeti la password"
+                  placeholder={m.repeatPassword}
                   autoComplete="new-password"
                   className={inputClasses}
                 />
@@ -199,7 +208,7 @@ export default function ResetPasswordPage() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cinema-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c00812] active:scale-[0.98] disabled:opacity-50"
               >
                 {submitting ? <Spinner className="h-4 w-4" /> : null}
-                Salva nuova password
+                {m.savePassword}
               </button>
             </form>
           )}
@@ -207,7 +216,7 @@ export default function ResetPasswordPage() {
 
         <p className="mt-4 text-center text-[11px] text-slate-600">
           <Link href="/" className="text-slate-500 transition hover:text-white">
-            ← Torna a CineClue
+            ← {m.backHome}
           </Link>
         </p>
       </div>

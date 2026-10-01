@@ -8,14 +8,26 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY ?? '';
 const TMDB_LANG = process.env.TMDB_LANGUAGE || 'it-IT';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
+export type ContentLocale = 'it' | 'en';
+
+export function contentLocale(value: unknown): ContentLocale {
+  return value === 'en' ? 'en' : 'it';
+}
+
+function tmdbLanguage(locale?: ContentLocale): string {
+  if (locale === 'en') return 'en-US';
+  if (locale === 'it') return 'it-IT';
+  return TMDB_LANG;
+}
+
 export function isTmdbConfigured(): boolean {
   return !!TMDB_API_KEY && TMDB_API_KEY !== 'tmdb_key_placeholder';
 }
 
-function tmdbUrl(path: string, params: Record<string, string> = {}): string {
+function tmdbUrl(path: string, params: Record<string, string> = {}, locale?: ContentLocale): string {
   const qs = new URLSearchParams({
     api_key: TMDB_API_KEY,
-    language: TMDB_LANG,
+    language: tmdbLanguage(locale),
     ...params
   });
   return `${TMDB_BASE}${path}?${qs.toString()}`;
@@ -74,8 +86,8 @@ function toSearchResult(m: TmdbMovie): SearchResult {
   };
 }
 
-export async function searchMovies(query: string): Promise<SearchResult[]> {
-  const data = await tmdbGet<{ results?: TmdbMovie[] }>(tmdbUrl('/search/movie', { query }));
+export async function searchMovies(query: string, locale?: ContentLocale): Promise<SearchResult[]> {
+  const data = await tmdbGet<{ results?: TmdbMovie[] }>(tmdbUrl('/search/movie', { query }, locale));
   return (data.results ?? [])
     .filter((m) => !!m.id && !m.adult)
     .slice(0, 8)
@@ -88,19 +100,18 @@ function pickYear(releaseDate?: string | null): number | null {
   return Number.isFinite(y) ? y : null;
 }
 
-const italianRegion = new Intl.DisplayNames(['it'], { type: 'region' });
-
-function italianCountryName(iso: string, fallback: string): string {
+function countryName(iso: string, fallback: string, locale?: ContentLocale): string {
   try {
-    return italianRegion.of(iso) ?? fallback;
+    const names = new Intl.DisplayNames([locale === 'en' ? 'en' : 'it'], { type: 'region' });
+    return names.of(iso) ?? fallback;
   } catch {
     return fallback;
   }
 }
 
-export async function loadMovie(id: number): Promise<MovieInfo> {
+export async function loadMovie(id: number, locale?: ContentLocale): Promise<MovieInfo> {
   const data = await tmdbGet<TmdbMovie>(
-    tmdbUrl(`/movie/${id}`, { append_to_response: 'credits' })
+    tmdbUrl(`/movie/${id}`, { append_to_response: 'credits' }, locale)
   );
 
   const credits = data.credits ?? data;
@@ -124,7 +135,7 @@ export async function loadMovie(id: number): Promise<MovieInfo> {
     genres: (data.genres ?? []).map((g) => ({ id: g.id, name: g.name })),
     countries: (data.production_countries ?? [])
       .filter((c): c is { iso_3166_1: string; name: string } => !!c.iso_3166_1 && !!c.name)
-      .map((c) => ({ iso: c.iso_3166_1, name: italianCountryName(c.iso_3166_1, c.name) })),
+      .map((c) => ({ iso: c.iso_3166_1, name: countryName(c.iso_3166_1, c.name, locale) })),
     director: {
       id: directorObj?.id ?? null,
       name: directorObj?.name ?? null

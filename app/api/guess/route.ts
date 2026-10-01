@@ -3,7 +3,7 @@ import { createServerClient } from '@/app/lib/authServer';
 import { resolveDailyMovieId } from '@/app/lib/dailyMovie';
 import { computeFeedback } from '@/app/lib/guess';
 import { readAccountPlay } from '@/app/lib/scoreStore';
-import { isTmdbConfigured, loadMovie } from '@/app/lib/tmdb';
+import { contentLocale, isTmdbConfigured, loadMovie } from '@/app/lib/tmdb';
 import { isValidPuzzleDate } from '@/app/lib/dates';
 import type { SubmitGuessResult } from '@/app/lib/types';
 
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { movieId?: unknown; date?: unknown };
+  let body: { movieId?: unknown; date?: unknown; lang?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -56,7 +56,8 @@ export async function POST(request: Request) {
     }
 
     const secretId = await resolveDailyMovieId(date);
-    const [secret, guess] = await Promise.all([loadMovie(secretId), loadMovie(movieId)]);
+    const locale = contentLocale(body.lang);
+    const [secret, guess] = await Promise.all([loadMovie(secretId, locale), loadMovie(movieId, locale)]);
 
     const feedback = computeFeedback(secret, guess);
     const won = secretId === guess.id;

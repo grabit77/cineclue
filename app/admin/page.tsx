@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { SearchResult } from '@/app/lib/types';
+import { knownError, LanguageSwitch, useLocale } from '@/app/lib/i18n';
 
 interface DayCard {
   date: string;
@@ -30,6 +31,7 @@ function poster(path: string | null): string | null {
 }
 
 export default function AdminPage() {
+  const { locale, m } = useLocale();
   const [password, setPassword] = useState('');
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export default function AdminPage() {
       return;
     }
     if (!res.ok) {
-      setError('Impossibile caricare il pannello.');
+      setError(m.adminLoadFail);
       return;
     }
     setOverview((await res.json()) as Overview);
@@ -63,13 +65,13 @@ export default function AdminPage() {
       return;
     }
     const timer = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
+      fetch(`/api/search?q=${encodeURIComponent(query.trim())}&lang=${locale}`)
         .then((res) => res.json())
         .then((data: { results?: SearchResult[] }) => setResults(data.results ?? []))
         .catch(() => setResults([]));
     }, 250);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, locale]);
 
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -81,7 +83,7 @@ export default function AdminPage() {
     });
     const payload = (await res.json().catch(() => null)) as { error?: string } | null;
     if (!res.ok) {
-      setError(payload?.error ?? 'Accesso negato.');
+      setError(knownError(payload?.error ?? m.adminDenied, m));
       return;
     }
     setPassword('');
@@ -100,7 +102,7 @@ export default function AdminPage() {
     const payload = (await res.json().catch(() => null)) as { error?: string } | null;
     setBusy(false);
     if (!res.ok) {
-      setError(payload?.error ?? 'Modifica non riuscita.');
+      setError(knownError(payload?.error ?? m.adminSaveFail, m));
       return;
     }
     setQuery('');
@@ -122,19 +124,22 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
-        <h1 className="font-display text-3xl font-black text-white">Pannello CineClue</h1>
-        <p className="mt-2 text-sm text-slate-400">Inserisci la password di amministrazione.</p>
+        <div className="mb-4 flex justify-end">
+          <LanguageSwitch />
+        </div>
+        <h1 className="font-display text-3xl font-black text-white">{m.adminTitle}</h1>
+        <p className="mt-2 text-sm text-slate-400">{m.adminPassword}</p>
         <form onSubmit={login} className="mt-6 space-y-3">
           <input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="w-full rounded-xl border border-cinema-line bg-white/[0.04] px-3.5 py-2.5 text-sm text-white outline-none focus:border-cinema-accent/70"
-            placeholder="Password"
+            placeholder={m.password}
           />
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <button className="w-full rounded-xl bg-cinema-accent px-4 py-2.5 text-sm font-semibold text-white">
-            Entra
+            {m.adminEnter}
           </button>
         </form>
       </main>
@@ -147,25 +152,28 @@ export default function AdminPage() {
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-black text-white">Pannello CineClue</h1>
-          <p className="text-sm text-slate-400">Classifica, statistiche e calendario dei film.</p>
+          <h1 className="font-display text-3xl font-black text-white">{m.adminTitle}</h1>
+          <p className="text-sm text-slate-400">{m.adminSubtitle}</p>
         </div>
-        <button
-          onClick={() => fetch('/api/admin/logout', { method: 'POST' }).then(() => setAuthed(false))}
-          className="text-sm text-slate-400 hover:text-white"
-        >
-          Esci
-        </button>
+        <div className="flex items-center gap-3">
+          <LanguageSwitch />
+          <button
+            onClick={() => fetch('/api/admin/logout', { method: 'POST' }).then(() => setAuthed(false))}
+            className="text-sm text-slate-400 hover:text-white"
+          >
+            {m.signOut}
+          </button>
+        </div>
       </div>
 
       {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
 
       <section className="mb-8 grid gap-3 sm:grid-cols-4">
         {[
-          ['Account', overview?.stats.accounts ?? 0],
-          ['Anonimi', overview?.stats.anonymous ?? 0],
-          ['Vittorie', overview?.stats.wins ?? 0],
-          ['Punti', overview?.stats.points ?? 0]
+          [m.adminAccounts, overview?.stats.accounts ?? 0],
+          [m.adminAnonymous, overview?.stats.anonymous ?? 0],
+          [m.adminWins, overview?.stats.wins ?? 0],
+          [m.adminPoints, overview?.stats.points ?? 0]
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-2xl border border-cinema-line bg-cinema-surface px-4 py-3">
             <p className="text-[11px] uppercase tracking-wider text-slate-500">{label}</p>
@@ -175,8 +183,8 @@ export default function AdminPage() {
       </section>
 
       <section className="mb-8">
-        <h2 className="mb-3 font-display text-xl font-bold text-white">Calendario</h2>
-        <p className="mb-3 text-xs text-slate-500">Oggi è bloccato. I giorni successivi si possono sostituire cercando un film.</p>
+        <h2 className="mb-3 font-display text-xl font-bold text-white">{m.calendar}</h2>
+        <p className="mb-3 text-xs text-slate-500">{m.calendarHelp}</p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {overview?.days.map((day) => (
             <button
@@ -195,7 +203,7 @@ export default function AdminPage() {
               } ${day.locked ? 'opacity-70' : 'hover:border-cinema-gold/50'}`}
             >
               <p className="text-[11px] text-slate-500">
-                {day.date} · #{day.puzzleNumber} {day.locked ? '· oggi' : day.manual ? '· scelto' : '· automatico'}
+                {day.date} · #{day.puzzleNumber} {day.locked ? `· ${m.today}` : day.manual ? `· ${m.chosen}` : `· ${m.automatic}`}
               </p>
               <p className="truncate text-sm font-semibold text-white">
                 {day.movie.title} {day.movie.year ? `(${day.movie.year})` : ''}
@@ -207,12 +215,12 @@ export default function AdminPage() {
         {selectedDay && !selectedDay.locked ? (
           <div className="mt-4 rounded-2xl border border-cinema-line bg-cinema-surface p-4">
             <p className="text-sm text-slate-300">
-              Sostituisci il film del <strong className="text-white">{selectedDay.date}</strong>
+              {m.replaceMovie(selectedDay.date)}
             </p>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Cerca un film…"
+              placeholder={m.searchMovie}
               className="mt-3 w-full rounded-xl border border-cinema-line bg-white/[0.04] px-3 py-2 text-sm text-white outline-none"
             />
             <ul className="mt-2 max-h-64 overflow-auto">
@@ -244,7 +252,7 @@ export default function AdminPage() {
                 onClick={() => restore(selectedDay.date)}
                 className="mt-3 text-xs text-slate-400 hover:text-white"
               >
-                Torna alla scelta automatica
+                {m.restoreAuto}
               </button>
             ) : null}
           </div>
@@ -252,16 +260,16 @@ export default function AdminPage() {
       </section>
 
       <section className="mb-8">
-        <h2 className="mb-3 font-display text-xl font-bold text-white">Classifica</h2>
+        <h2 className="mb-3 font-display text-xl font-bold text-white">{m.leaderboard}</h2>
         {overview && overview.rows.length === 0 ? (
-          <p className="text-sm text-slate-500">Nessun punteggio.</p>
+          <p className="text-sm text-slate-500">{m.noScores}</p>
         ) : (
           <ol className="space-y-1.5">
             {overview?.rows.map((row, index) => (
               <li key={row.userId} className="flex items-center justify-between rounded-xl border border-cinema-line px-3 py-2">
                 <span className="text-sm text-white">
-                  {index + 1}. {row.username || 'Giocatore'}
-                  <span className="ml-2 text-xs text-slate-500">{row.totalWins} vittorie</span>
+                  {index + 1}. {row.username || m.player}
+                  <span className="ml-2 text-xs text-slate-500">{m.winsCount(row.totalWins)}</span>
                 </span>
                 <span className="font-mono text-sm text-cinema-gold">{row.totalPoints}</span>
               </li>

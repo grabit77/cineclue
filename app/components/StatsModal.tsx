@@ -2,6 +2,7 @@
 
 import type { Profile } from '@/app/lib/types';
 import { MAX_ATTEMPTS } from '@/app/lib/types';
+import { useLocale } from '@/app/lib/i18n';
 import { Modal } from './ui';
 
 function WinRateBar({ rate }: { rate: number }) {
@@ -16,23 +17,24 @@ function WinRateBar({ rate }: { rate: number }) {
 }
 
 export default function StatsModal({ open, onClose, profile }: { open: boolean; onClose: () => void; profile: Profile }) {
+  const { m } = useLocale();
   const winRate = profile.gamesPlayed > 0 ? Math.round((profile.gamesWon / profile.gamesPlayed) * 100) : 0;
 
   const distribution = Array.from({ length: MAX_ATTEMPTS }, (_, i) => String(i + 1));
   const maxCount = Math.max(1, ...distribution.map((k) => profile.distribution[k] ?? 0));
 
   return (
-    <Modal open={open} onClose={onClose} title="Le tue statistiche">
+    <Modal open={open} onClose={onClose} title={m.yourStats}>
       <div className="grid grid-cols-4 gap-3 text-center">
-        <Stat label="Giocate" value={profile.gamesPlayed} />
-        <Stat label="Vinte" value={profile.gamesWon} />
-        <Stat label="Streak" value={profile.currentStreak} accent />
-        <Stat label="Max" value={profile.maxStreak} />
+        <Stat label={m.played} value={profile.gamesPlayed} />
+        <Stat label={m.won} value={profile.gamesWon} />
+        <Stat label={m.streak} value={profile.currentStreak} accent />
+        <Stat label={m.max} value={profile.maxStreak} />
       </div>
 
       <div className="mt-4">
         <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-400">
-          <span>Percentuale vittorie</span>
+          <span>{m.winRate}</span>
           <span className="font-bold text-white">{winRate}%</span>
         </div>
         <WinRateBar rate={winRate} />
@@ -40,7 +42,7 @@ export default function StatsModal({ open, onClose, profile }: { open: boolean; 
 
       <div className="mt-5">
         <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500">
-          Distribuzione tentativi
+          {m.distribution}
         </p>
         <ul className="space-y-1.5">
           {distribution.map((k) => {
@@ -64,7 +66,7 @@ export default function StatsModal({ open, onClose, profile }: { open: boolean; 
       </div>
 
       <p className="mt-5 text-center text-[11px] text-slate-500">
-        Punti per vittoria: (7 − tentativi) × 100 + streak × 10
+        {m.pointsRule}
       </p>
     </Modal>
   );
