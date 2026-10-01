@@ -33,6 +33,7 @@ export interface Messages {
   legendWrong: string;
   legendArrows: string;
   footer: string;
+  coffee: string;
   searchPlaceholder: string;
   searchDone: string;
   searchScoring: string;
@@ -193,6 +194,7 @@ const it: Messages = {
   legendWrong: 'Rosso = dato diverso',
   legendArrows: 'Frecce = il film segreto è uscito o dura di più o di meno',
   footer: 'CineClue — un nuovo puzzle ogni giorno · Dati film © TMDb',
+  coffee: 'Offrimi un caffè',
   searchPlaceholder: 'Cerca un film per titolo (es. Inception)…',
   searchDone: 'Partita conclusa: torna domani!',
   searchScoring: 'Valutazione in corso…',
@@ -357,6 +359,7 @@ const en: Messages = {
   legendWrong: 'Red = different',
   legendArrows: 'Arrows = the secret movie was released or runs longer or shorter',
   footer: 'CineClue — a new puzzle every day · Movie data © TMDb',
+  coffee: 'Buy me a coffee',
   searchPlaceholder: 'Search a movie by title (e.g. Inception)…',
   searchDone: 'Game over: come back tomorrow!',
   searchScoring: 'Checking your guess…',

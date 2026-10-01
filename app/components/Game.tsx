@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Clapperboard } from 'lucide-react';
+import { Clapperboard, Coffee } from 'lucide-react';
 
 import { useAuth } from '@/app/hooks/useAuth';
 import { useGame } from '@/app/hooks/useGame';
@@ -129,10 +129,18 @@ export default function Game() {
           </div>
         )}
 
-        {/* Footer */}
-        <p className="mt-10 text-center text-[11px] text-slate-600">
-          🎬 {m.footer}
-        </p>
+        <footer className="mt-10 flex flex-col items-center gap-3">
+          <a
+            href="https://buymeacoffee.com/grabit77"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-[#FFDD00] px-4 py-2 text-sm font-bold text-black transition hover:brightness-95"
+          >
+            <Coffee className="h-4 w-4" />
+            {m.coffee}
+          </a>
+          <p className="text-center text-[11px] text-slate-600">🎬 {m.footer}</p>
+        </footer>
       </main>
 
       <StatsModal open={statsOpen} onClose={() => setStatsOpen(false)} profile={profile} />
