@@ -20,6 +20,10 @@ export default function ResetPasswordPage() {
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
+    // Leggere l'URL prima di creare il client: all'avvio Supabase può
+    // consumare il frammento #access_token del link di recupero.
+    const params = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const supabase = getSupabaseBrowser();
     if (!supabase) {
       setExchangeError('Supabase non configurato.');
@@ -27,26 +31,51 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // Il link ricevuto via email contiene un `code`: viene scambiato con
-    // una sessione, poi ripuliamo l'URL per mostrare il form.
-    const params = new URLSearchParams(window.location.search);
+    // L'email di Supabase può arrivare in tre forme: ?code= (PKCE),
+    // ?token_hash=, oppure #access_token= dopo /auth/v1/verify.
     const code = params.get('code');
-
-    if (!code) {
-      setExchangeError('Link di recupero mancante o non valido.');
-      setExchanging(false);
-      return;
-    }
+    const tokenHash = params.get('token_hash');
+    const accessToken = hash.get('access_token');
+    const refreshToken = hash.get('refresh_token');
 
     let active = true;
-    supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
+    const finish = (message: string | null) => {
       if (!active) return;
       window.history.replaceState({}, '', '/reset-password');
-      if (exchangeError) {
-        setExchangeError(exchangeError.message);
-      }
+      if (message) setExchangeError(message);
       setExchanging(false);
-    });
+    };
+
+    const establish = async () => {
+      if (code) {
+        const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+        finish(codeError ? codeError.message : null);
+        return;
+      }
+
+      if (tokenHash) {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery'
+        });
+        finish(otpError ? otpError.message : null);
+        return;
+      }
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        finish(sessionError ? sessionError.message : null);
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+      finish(data.session ? null : 'Link di recupero mancante o non valido.');
+    };
+
+    establish().catch(() => finish('Link di recupero mancante o non valido.'));
     return () => {
       active = false;
     };
@@ -114,7 +143,7 @@ export default function ResetPasswordPage() {
             <div className="space-y-4">
               <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-400">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>{exchangeError}. Richiedi un nuovo link dalla schermata di accesso.</p>
+                <p>{exchangeError} Richiedi un nuovo link dalla schermata di accesso.</p>
               </div>
               <Link
                 href="/"
