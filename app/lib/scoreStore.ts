@@ -1,6 +1,6 @@
 import { computeStreak, pointsForWin } from './storage';
 import { getSupabaseAdmin } from './supabaseServer';
-import type { PuzzleDate } from './types';
+import type { Guess, PuzzleDate } from './types';
 
 export const ANON_USERNAME = 'Cinefilo anonimo';
 const ANON_EMAIL = 'cinefilo-anonimo@cineclue.app';
@@ -117,6 +117,100 @@ export async function saveAccountWins(
 
   const { error } = await admin.from('daily_scores').upsert(rows, { onConflict: 'user_id,puzzle_date' });
   if (error) throw new Error(error.message);
+}
+
+export type PlayOutcome = 'playing' | 'won' | 'lost';
+
+export interface AccountPlay {
+  outcome: PlayOutcome;
+  attempts: number;
+  guesses: Guess[];
+}
+
+function isGuess(value: unknown): value is Guess {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as Partial<Guess>;
+  return Number.isInteger(row.id) && typeof row.title === 'string' && !!row.feedback && typeof row.feedback === 'object';
+}
+
+export function parseGuesses(value: unknown): Guess[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isGuess).slice(0, 6);
+}
+
+function missingResultsTable(error: { code?: string; message?: string }): boolean {
+  return error.code === '42P01' || error.code === 'PGRST205' || /daily_results|schema cache/i.test(error.message ?? '');
+}
+
+/** Esito del giorno per l'account. Una riga impedisce di rigiocare da un'altra sessione. */
+export async function saveAccountPlay(
+  userId: string,
+  username: string | null,
+  play: { date: PuzzleDate; outcome: PlayOutcome; attempts: number; guesses: unknown }
+): Promise<void> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+  await ensureUserRow(admin, userId, username);
+
+  const guesses = parseGuesses(play.guesses);
+  let storedGuesses = guesses;
+  if (storedGuesses.length === 0) {
+    const existing = await admin
+      .from('daily_results')
+      .select('guesses')
+      .eq('user_id', userId)
+      .eq('puzzle_date', play.date)
+      .maybeSingle();
+    if (!existing.error && existing.data) storedGuesses = parseGuesses(existing.data.guesses);
+  }
+
+  const { error } = await admin.from('daily_results').upsert(
+    {
+      user_id: userId,
+      puzzle_date: play.date,
+      outcome: play.outcome,
+      attempts: play.attempts,
+      guesses: storedGuesses
+    },
+    { onConflict: 'user_id,puzzle_date' }
+  );
+  if (error && !missingResultsTable(error)) throw new Error(error.message);
+}
+
+export async function readAccountPlay(userId: string, date: PuzzleDate): Promise<AccountPlay | null> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+
+  const stored = await admin
+    .from('daily_results')
+    .select('outcome, attempts, guesses')
+    .eq('user_id', userId)
+    .eq('puzzle_date', date)
+    .maybeSingle();
+
+  if (!stored.error && stored.data) {
+    const outcome: PlayOutcome =
+      stored.data.outcome === 'lost' ? 'lost' : stored.data.outcome === 'playing' ? 'playing' : 'won';
+    const attempts = Number(stored.data.attempts);
+    return {
+      outcome,
+      attempts: Number.isInteger(attempts) && attempts >= 1 && attempts <= 6 ? attempts : 6,
+      guesses: parseGuesses(stored.data.guesses)
+    };
+  }
+
+  if (stored.error && !missingResultsTable(stored.error)) throw new Error(stored.error.message);
+
+  const score = await admin
+    .from('daily_scores')
+    .select('attempts')
+    .eq('user_id', userId)
+    .eq('puzzle_date', date)
+    .maybeSingle();
+  if (score.error || !score.data) return null;
+  const attempts = Number(score.data.attempts);
+  if (!Number.isInteger(attempts) || attempts < 1 || attempts > 6) return null;
+  return { outcome: 'won', attempts, guesses: [] };
 }
 
 /**

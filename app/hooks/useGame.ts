@@ -21,7 +21,6 @@ import {
   applyServerReset,
   loadGameState,
   loadProfile,
-  pointsForWin,
   saveGameState,
   saveProfile
 } from '@/app/lib/storage';
@@ -29,7 +28,16 @@ import { isSupabaseConfigured, submitDailyScore } from '@/app/lib/supabaseClient
 
 interface UseGameOptions {
   user: { id: string } | null;
+  authReady: boolean;
   syncProfile: () => Promise<void>;
+}
+
+interface AccountPlayPayload {
+  played?: boolean;
+  outcome?: 'playing' | 'won' | 'lost';
+  attempts?: number;
+  guesses?: Guess[];
+  error?: string;
 }
 
 export interface UseGame {
@@ -44,10 +52,11 @@ export interface UseGame {
   dismissError: () => void;
 }
 
-export function useGame({ user, syncProfile }: UseGameOptions): UseGame {
+export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGame {
   const [dailyInfo, setDailyInfo] = useState<DailyInfo | null>(null);
   const [state, setState] = useState<GameState | null>(null);
   const [profile, setProfile] = useState<Profile>(() => loadProfile());
+  const [accountReady, setAccountReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submittingRef = useRef(false);
@@ -96,6 +105,51 @@ export function useGame({ user, syncProfile }: UseGameOptions): UseGame {
     setState(effective);
   }, [dailyInfo, state]);
 
+  // L'account può aver già chiuso la partita su un altro browser.
+  useEffect(() => {
+    if (!authReady || !dailyInfo) return;
+    if (!user?.id) {
+      setAccountReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setAccountReady(false);
+    fetch(`/api/account/today?date=${encodeURIComponent(dailyInfo.date)}`, { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return (await res.json()) as AccountPlayPayload;
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        setProfile(loadProfile());
+        if (payload?.played && payload.outcome) {
+          const next = stateFromPlay(dailyInfo.date, dailyInfo.puzzleNumber, payload);
+          setState((prev) => {
+            if (prev && prev.date === dailyInfo.date && prev.status !== 'playing') return prev;
+            if (
+              payload.outcome === 'playing' &&
+              prev &&
+              prev.date === dailyInfo.date &&
+              prev.guesses.length >= next.guesses.length
+            ) {
+              return prev;
+            }
+            saveGameState(next);
+            return next;
+          });
+        }
+        setAccountReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setAccountReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user?.id, dailyInfo]);
+
   const dismissError = useCallback(() => setError(null), []);
 
   // Dal 4° tentativo in poi: una categoria ancora non indovinata, bloccata sui primi 3 tentativi.
@@ -132,7 +186,7 @@ export function useGame({ user, syncProfile }: UseGameOptions): UseGame {
 
   const submitGuess = useCallback(
     async (movieId: number) => {
-      if (!state || state.status !== 'playing') return;
+      if (!state || state.status !== 'playing' || !accountReady) return;
       if (submittingRef.current) return;
       if (state.guesses.some((g) => g.id === movieId)) {
         setError('Hai già provato questo film.');
@@ -151,7 +205,13 @@ export function useGame({ user, syncProfile }: UseGameOptions): UseGame {
         });
 
         if (!res.ok) {
-          const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+          const payload = (await res.json().catch(() => null)) as AccountPlayPayload | null;
+          if (res.status === 409 && payload?.played && payload.outcome && payload.outcome !== 'playing') {
+            const next = stateFromPlay(state.date, state.puzzleNumber, payload);
+            saveGameState(next);
+            setState(next);
+            return;
+          }
           throw new Error(payload?.error ?? 'Errore nella valutazione del tentativo.');
         }
 
@@ -184,19 +244,24 @@ export function useGame({ user, syncProfile }: UseGameOptions): UseGame {
           date: state.date,
           points: 0
         });
-        if (won) {
-          const points = pointsForWin(attempts, nextProfile.currentStreak);
-          if (isSupabaseConfigured()) {
-            submitDailyScore({
-              date: state.date,
-              puzzleNumber: state.puzzleNumber,
-              attempts,
-              won: true,
-              guestId: user ? undefined : guestId()
-            }).catch(() => undefined);
-            if (user) syncProfile().catch(() => undefined);
-          }
-          void points;
+        if (isSupabaseConfigured() && user) {
+          submitDailyScore({
+            date: state.date,
+            puzzleNumber: state.puzzleNumber,
+            attempts,
+            won: nextStatus === 'won',
+            outcome: nextStatus,
+            guesses: nextState.guesses
+          }).catch(() => undefined);
+          if (nextStatus !== 'playing') syncProfile().catch(() => undefined);
+        } else if (isSupabaseConfigured() && won) {
+          submitDailyScore({
+            date: state.date,
+            puzzleNumber: state.puzzleNumber,
+            attempts,
+            won: true,
+            guestId: guestId()
+          }).catch(() => undefined);
         }
         saveProfile(nextProfile);
         setProfile(nextProfile);
@@ -207,19 +272,31 @@ export function useGame({ user, syncProfile }: UseGameOptions): UseGame {
         setSubmitting(false);
       }
     },
-    [state, profile, user, syncProfile]
+    [state, profile, user, syncProfile, accountReady]
   );
 
   return {
     dailyInfo,
     state,
     profile,
-    ready: !!state,
+    ready: !!state && accountReady,
     submitting,
     error,
     remaining: state ? MAX_ATTEMPTS - state.guesses.length : MAX_ATTEMPTS,
     submitGuess,
     dismissError
+  };
+}
+
+function stateFromPlay(date: PuzzleDate, puzzleNumber: number, play: AccountPlayPayload): GameState {
+  const status = play.outcome === 'won' ? 'won' : play.outcome === 'lost' ? 'lost' : 'playing';
+  const attempts = Number(play.attempts);
+  return {
+    date,
+    puzzleNumber,
+    status,
+    guesses: Array.isArray(play.guesses) ? play.guesses : [],
+    wonAtAttempt: status === 'won' && Number.isInteger(attempts) ? attempts : null
   };
 }
 

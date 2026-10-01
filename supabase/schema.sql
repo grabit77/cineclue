@@ -71,6 +71,24 @@ create policy "scores: insert own"
 -- quindi non servono policy di SELECT pubbliche.
 
 -- -------------------------------------------------------------
+-- Esito del giorno per account: vinto o perso.
+-- Se esiste una riga, quell'account non può rigiocare la stessa data
+-- da un altro browser. Nessuna policy: ci accede solo il service role,
+-- così il client non può cancellare la riga e ricominciare.
+-- -------------------------------------------------------------
+create table if not exists public.daily_results (
+  user_id uuid not null references public.users (id) on delete cascade,
+  puzzle_date date not null,
+  outcome text not null check (outcome in ('playing', 'won', 'lost')),
+  attempts integer not null check (attempts between 1 and 6),
+  guesses jsonb not null default '[]'::jsonb,
+  created_at timestamptz default now(),
+  primary key (user_id, puzzle_date)
+);
+
+alter table public.daily_results enable row level security;
+
+-- -------------------------------------------------------------
 -- Calendario admin: un'unica riga con i film assegnati a mano.
 -- Su Vercel il filesystem è in sola lettura, quindi non si può
 -- scrivere data/schedule.json. Nessuna policy: ci accede solo

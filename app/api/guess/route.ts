@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@/app/lib/authServer';
 import { resolveDailyMovieId } from '@/app/lib/dailyMovie';
 import { computeFeedback } from '@/app/lib/guess';
+import { readAccountPlay } from '@/app/lib/scoreStore';
 import { isTmdbConfigured, loadMovie } from '@/app/lib/tmdb';
 import { isValidPuzzleDate } from '@/app/lib/dates';
 import type { SubmitGuessResult } from '@/app/lib/types';
@@ -33,6 +35,26 @@ export async function POST(request: Request) {
   }
 
   try {
+    const supabase = createServerClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (user) {
+      const play = await readAccountPlay(user.id, date);
+      if (play && play.outcome !== 'playing') {
+        return NextResponse.json(
+          {
+            error: 'Hai già giocato oggi con questo account.',
+            played: true,
+            outcome: play.outcome,
+            attempts: play.attempts,
+            guesses: play.guesses
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const secretId = await resolveDailyMovieId(date);
     const [secret, guess] = await Promise.all([loadMovie(secretId), loadMovie(movieId)]);
 

@@ -88,25 +88,29 @@ async function syncSessionToCookies(session: Session): Promise<void> {
   });
 }
 
-let sessionSyncKey: string | null = null;
+let sessionSync: { key: string; promise: Promise<void> } | null = null;
 
 /** A ogni login: cookie di sessione -> profilo cloud -> vittorie pendenti in classifica. */
 async function syncSessionAndCloud(session: Session): Promise<void> {
-  if (!session.user.id) return;
+  if (!session.user.id || !session.access_token) return;
   const key = `${session.user.id}:${session.access_token}`;
-  if (sessionSyncKey === key) return;
-  sessionSyncKey = key;
-  try {
-    await syncSessionToCookies(session);
-  } catch {
-    /* best effort */
-  }
-  try {
-    await pullCloudProfile(session.user.id);
-    await syncLocalWinsToDailyScores();
-  } catch {
-    /* best effort */
-  }
+  if (sessionSync?.key === key) return sessionSync.promise;
+
+  const promise = (async () => {
+    try {
+      await syncSessionToCookies(session);
+    } catch {
+      /* best effort */
+    }
+    try {
+      await pullCloudProfile(session.user.id);
+      await syncLocalWinsToDailyScores();
+    } catch {
+      /* best effort */
+    }
+  })();
+  sessionSync = { key, promise };
+  return promise;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -121,21 +125,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) await syncSessionAndCloud(data.session);
       setUser(userFromSession(data.session));
-      if (data.session) {
-        void syncSessionAndCloud(data.session);
-      }
       setLoading(false);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(userFromSession(session));
-      // Solo agli eventi di accesso (non a ogni TOKEN_REFRESHED) sincronizziamo
-      // cookie/profilo/classifica: evita chiamate ridondanti a Supabase.
+      // I cookie devono esistere prima che il gioco controlli se l'account ha già giocato.
       if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
-        void syncSessionAndCloud(session);
+        void syncSessionAndCloud(session).finally(() => {
+          setUser(userFromSession(session));
+          setLoading(false);
+        });
+        return;
       }
+      setUser(userFromSession(session));
     });
 
     return () => sub.subscription.unsubscribe();

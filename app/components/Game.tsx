@@ -22,6 +22,7 @@ export default function Game() {
   const auth = useAuth();
   const game = useGame({
     user: auth.user ? { id: auth.user.id } : null,
+    authReady: !auth.loading,
     syncProfile: auth.syncProfile
   });
 

@@ -163,8 +163,10 @@ export async function submitDailyScore(payload: {
   puzzleNumber: number;
   attempts: number;
   won: boolean;
+  outcome?: 'playing' | 'won' | 'lost';
   guestId?: string;
   wins?: { date: string; attempts: number }[];
+  guesses?: unknown;
 }): Promise<boolean> {
   try {
     const res = await fetch('/api/score', {
