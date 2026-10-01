@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { ANON_USERNAME, anonymousRows } from '@/app/lib/scoreStore';
+import { ANON_USERNAME } from '@/app/lib/scoreStore';
 import { isSupabaseServerReady, getSupabaseAdmin } from '@/app/lib/supabaseServer';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Classifica globale: somma i punti di ogni account in `daily_scores`
- * Ogni ospite senza account ha la propria riga, col nome "Cinefilo anonimo".
+ * Classifica globale: solo gli account. Le partite anonime restano nel browser.
  */
 export async function GET() {
   if (!isSupabaseServerReady()) {
@@ -51,16 +50,6 @@ export async function GET() {
     current.totalPoints += points;
     current.totalWins += 1;
     aggregate.set(row.user_id, current);
-  }
-
-  for (const anon of await anonymousRows(supabase)) {
-    aggregate.set(anon.userId, {
-      userId: anon.userId,
-      username: ANON_USERNAME,
-      totalPoints: anon.totalPoints,
-      totalWins: anon.totalWins,
-      currentStreak: anon.currentStreak
-    });
   }
 
   const rows = [...aggregate.values()]

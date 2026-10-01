@@ -17,7 +17,6 @@ import { puzzleNumber, todayUTC } from '@/app/lib/dates';
 import {
   applyResult,
   cleanupOldStates,
-  guestId,
   applyServerReset,
   loadGameState,
   loadProfile,
@@ -126,11 +125,11 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
         if (payload?.played && payload.outcome) {
           const next = stateFromPlay(dailyInfo.date, dailyInfo.puzzleNumber, payload);
           setState((prev) => {
-            if (prev && prev.date === dailyInfo.date && prev.status !== 'playing') return prev;
             if (
               payload.outcome === 'playing' &&
               prev &&
               prev.date === dailyInfo.date &&
+              prev.status === 'playing' &&
               prev.guesses.length >= next.guesses.length
             ) {
               return prev;
@@ -254,14 +253,6 @@ export function useGame({ user, authReady, syncProfile }: UseGameOptions): UseGa
             guesses: nextState.guesses
           }).catch(() => undefined);
           if (nextStatus !== 'playing') syncProfile().catch(() => undefined);
-        } else if (isSupabaseConfigured() && won) {
-          submitDailyScore({
-            date: state.date,
-            puzzleNumber: state.puzzleNumber,
-            attempts,
-            won: true,
-            guestId: guestId()
-          }).catch(() => undefined);
         }
         saveProfile(nextProfile);
         setProfile(nextProfile);

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/app/lib/authServer';
-import { isGuestId, parseWins, saveAccountPlay, saveAccountWins, saveGuestWins } from '@/app/lib/scoreStore';
+import { isGuestId, parseWins, saveAccountPlay, saveAccountWins } from '@/app/lib/scoreStore';
 import { isSupabaseServerReady } from '@/app/lib/supabaseServer';
 import type { DatedWin } from '@/app/lib/scoreStore';
 
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         });
       }
     } else if (isGuestId(body.guestId)) {
-      await saveGuestWins(body.guestId, wins);
+      return NextResponse.json({ ok: true });
     } else {
       return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
     }

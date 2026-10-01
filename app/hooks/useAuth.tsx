@@ -15,8 +15,7 @@ import {
   getSupabaseBrowser,
   isSupabaseConfigured,
   pullCloudProfile,
-  pushCloudProfile,
-  syncLocalWinsToDailyScores
+  pushCloudProfile
 } from '@/app/lib/supabaseClient';
 
 export interface AuthUser {
@@ -104,7 +103,6 @@ async function syncSessionAndCloud(session: Session): Promise<void> {
     }
     try {
       await pullCloudProfile(session.user.id);
-      await syncLocalWinsToDailyScores();
     } catch {
       /* best effort */
     }

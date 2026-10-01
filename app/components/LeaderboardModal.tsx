@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
 
-import { guestId } from '@/app/lib/storage';
 import type { LeaderboardEntry } from '@/app/lib/types';
-import { fetchLeaderboard, syncLocalWinsToDailyScores, type LeaderboardRow } from '@/app/lib/supabaseClient';
+import { fetchLeaderboard, type LeaderboardRow } from '@/app/lib/supabaseClient';
 import { isSupabaseConfigured } from '@/app/lib/supabaseClient';
 import { Modal, Spinner } from './ui';
 
@@ -41,9 +40,7 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
     if (!open) return;
     setLoading(true);
     setSetupRequired(false);
-    syncLocalWinsToDailyScores()
-      .catch(() => undefined)
-      .then(() => fetchLeaderboard())
+    fetchLeaderboard()
       .then(({ rows: r, setupRequired: setup }) => {
         setRows(toEntries(r));
         setSetupRequired(setup);
@@ -90,9 +87,7 @@ export default function LeaderboardModal({ open, onClose, currentUserId }: Leade
           <ol className="space-y-1.5">
             {visible.map((row, i) => {
               const rank = clampedPage * PAGE_SIZE + i + 1;
-              const isMe =
-                (currentUserId !== null && row.userId === currentUserId) ||
-                (currentUserId === null && row.userId === guestId());
+              const isMe = currentUserId !== null && row.userId === currentUserId;
               return (
                 <li
                   key={row.userId}

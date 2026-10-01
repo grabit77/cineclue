@@ -5,10 +5,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Profile } from './types';
 import {
   applyResult,
-  computeMaxStreak,
-  computeStreak,
   defaultProfile,
-  guestId,
   loadProfile,
   pointsForWin,
   saveProfile
@@ -93,50 +90,20 @@ export async function pullCloudProfile(userId: string): Promise<Profile> {
   if (profilePullsInFlight.has(userId)) return loadProfile();
   profilePullsInFlight.add(userId);
   try {
-    const { data } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
-    if (!data) return loadProfile();
+    const { data, error } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+    if (error) return loadProfile();
+    if (!data) {
+      const empty = defaultProfile();
+      saveProfile(empty);
+      return empty;
+    }
 
     const cloud = fromCloudProfile(data as UserRow);
-    const local = loadProfile();
-
-    const cloudWins = Object.keys(cloud.winsByDate).length;
-    const localWins = Object.keys(local.winsByDate).length;
-    // Prevale la fonte più avanzata (più vittorie accumulate).
-    const merged = cloudWins >= localWins ? cloud : mergeProfiles(local, cloud);
-    saveProfile(merged);
-    return merged;
+    saveProfile(cloud);
+    return cloud;
   } finally {
     profilePullsInFlight.delete(userId);
   }
-}
-
-function mergeProfiles(a: Profile, b: Profile): Profile {
-  const winsByDate = { ...b.winsByDate, ...a.winsByDate };
-  const merged: Profile = {
-    gamesPlayed: Math.max(a.gamesPlayed, b.gamesPlayed),
-    gamesWon: Math.max(a.gamesWon, b.gamesWon),
-    currentStreak: Math.max(a.currentStreak, b.currentStreak),
-    maxStreak: Math.max(a.maxStreak, b.maxStreak),
-    distribution: {
-      '1': 0,
-      '2': 0,
-      '3': 0,
-      '4': 0,
-      '5': 0,
-      '6': 0,
-      ...b.distribution,
-      ...a.distribution
-    },
-    winsByDate,
-    lostOnDates: { ...b.lostOnDates, ...a.lostOnDates },
-    lastPlayedDate: a.lastPlayedDate ?? b.lastPlayedDate
-  };
-  // Ricomputa streak a partire dalle vittorie unite.
-  if (merged.lastPlayedDate) {
-    merged.currentStreak = computeStreak(winsByDate, merged.lastPlayedDate);
-    merged.maxStreak = computeMaxStreak(winsByDate, merged.lastPlayedDate);
-  }
-  return merged;
 }
 
 /** Carica il profilo locale sul cloud (lato client via RLS). */
@@ -179,50 +146,6 @@ export async function submitDailyScore(payload: {
     /* best effort: se fallisce, il punteggio resta locale */
     return false;
   }
-}
-
-const SYNCED_SCORES_KEY = 'cineclue.syncedScores';
-
-function getSyncedDates(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(SYNCED_SCORES_KEY) ?? '[]') as string[];
-  } catch {
-    return [];
-  }
-}
-
-function markSyncedDate(date: string): void {
-  const dates = getSyncedDates();
-  if (dates.includes(date)) return;
-  dates.push(date);
-  localStorage.setItem(SYNCED_SCORES_KEY, JSON.stringify(dates));
-}
-
-/**
- * Riporta in `daily_scores` le vittorie già giocate in locale (guest)
- * dopo l'accesso. Idempotente: ogni data viene inviata una sola volta
- * (memoizzata in localStorage). Chiamato solo all'accesso/ripristino sessione.
- */
-export async function syncLocalWinsToDailyScores(): Promise<void> {
-  const profile = loadProfile();
-  const entries = Object.entries(profile.winsByDate ?? {});
-  if (entries.length === 0) return;
-
-  const synced = new Set(getSyncedDates());
-  const pending = entries.filter(([date]) => !synced.has(date));
-  if (pending.length === 0) return;
-
-  const ok = await submitDailyScore({
-    date: pending[0][0],
-    puzzleNumber: 0,
-    attempts: pending[0][1],
-    won: true,
-    guestId: guestId(),
-    wins: pending.map(([date, attempts]) => ({ date, attempts }))
-  });
-
-  if (!ok) return;
-  for (const [date] of pending) markSyncedDate(date);
 }
 
 export interface LeaderboardRow {
